@@ -29,9 +29,7 @@ machine0 --version
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    machine0-cli.url = "git+ssh://git@github.com/fdmtl/machine0-cli-nix";
-    # Or, if you have a GitHub token with access to this repo configured for Nix:
-    #   machine0-cli.url = "github:fdmtl/machine0-cli-nix";
+    machine0-cli.url = "github:fdmtl/machine0-cli-nix";
   };
 
   outputs = { self, nixpkgs, machine0-cli, ... }:
@@ -44,10 +42,7 @@ machine0 --version
 }
 ```
 
-**Auth note:** this repo is INTERNAL, so `github:fdmtl/machine0-cli-nix` needs a
-GitHub token with access configured for Nix (`access-tokens` in `nix.conf`).
-`git+ssh://git@github.com/fdmtl/machine0-cli-nix` uses your SSH agent instead and
-works out of the box for org members.
+The repo is public, so `github:fdmtl/machine0-cli-nix` works without any token.
 
 ## Updating the pinned version
 
