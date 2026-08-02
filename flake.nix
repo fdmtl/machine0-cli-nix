@@ -13,8 +13,8 @@
         nodejs = pkgs.nodejs_22;
 
         # --- pin (updated by ./update.sh) ---
-        version = "1.0.129";
-        hash = "sha256-dSJmP5X5ixDe5s/4U/rnWh+gAx/cD5wPIEj33yfSVcM=";
+        version = "1.0.148";
+        hash = "sha256-nqQEvZjmE7NiyDEIz3DERRgKEfArRqM9rHZTtvNVB6s=";
         # -------------------------------------
 
         machine0 = pkgs.stdenv.mkDerivation {
