@@ -46,7 +46,21 @@ The repo is public, so `github:fdmtl/machine0-cli-nix` works without any token.
 
 ## Updating the pinned version
 
-The flake pins an exact published version and its tarball hash. To bump it:
+The flake pins an exact published version and its tarball hash.
+
+**Updates are automated.** [`.github/workflows/update-pin.yml`](.github/workflows/update-pin.yml)
+bumps the pin, build-tests the result, and commits to `main`. It runs on:
+
+- a `repository_dispatch` fired by the CLI publish workflow in `fdmtl/machine0`
+  (minutes after each `npm publish`),
+- a daily cron fallback that pins whatever npm's `latest` resolves to,
+- manual `workflow_dispatch` (with an optional `version` input).
+
+**Rollback:** run the workflow manually with the previous good version as the
+`version` input. If npm's `latest` still points at the bad release, deprecate or
+re-tag it on npm first, or the daily cron will bump forward again.
+
+The manual escape hatch still works locally:
 
 ```sh
 ./update.sh            # pin to the latest version on npm
