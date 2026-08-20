@@ -12,9 +12,9 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         # --- pin (updated by ./update.sh) ---
-        version = "1.0.148";
-        hash = "sha256-nqQEvZjmE7NiyDEIz3DERRgKEfArRqM9rHZTtvNVB6s=";
-        npmDepsHash = "sha256-QecaJnJs5vNY47GYG4j/wBblbOTIh1klOeUrqrMS1ds=";
+        version = "1.0.155";
+        hash = "sha256-KtSdPkCBFogWM1dwl+mqdeSQSxM/NCchtwxv/l1qFp0=";
+        npmDepsHash = "sha256-yqecaL02z2KoOF+1uD3mqldv8K+3eWiS4tM8EMBO9qw=";
         # -------------------------------------
 
         machine0 = (pkgs.buildNpmPackage.override { nodejs = pkgs.nodejs_22; }) {
