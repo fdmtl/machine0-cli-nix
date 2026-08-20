@@ -4,9 +4,10 @@ A small, standalone [Nix flake](https://nixos.wiki/wiki/Flakes) that packages th
 [machine0 CLI](https://machine0.io) (`@machine0/cli`) — no `npm` required on your
 machine.
 
-The flake fetches the prebuilt bundle straight from the public npm registry and
-wraps it with a pinned Node.js. The published CLI is a single dependency-free
-bundle, so this is a plain fetch-and-wrap — no `node_modules`, no build step.
+The flake fetches the prebuilt bundle straight from the public npm registry,
+installs its two runtime dependencies (`open`, `update-notifier`) from a
+vendored `package-lock.json` via `buildNpmPackage`, and runs it with a pinned
+Node.js. No build step — the tarball ships a prebuilt bundle.
 
 ## Use it
 
@@ -46,7 +47,21 @@ The repo is public, so `github:fdmtl/machine0-cli-nix` works without any token.
 
 ## Updating the pinned version
 
-The flake pins an exact published version and its tarball hash. To bump it:
+The flake pins an exact published version and its tarball hash.
+
+**Updates are automated.** [`.github/workflows/update-pin.yml`](.github/workflows/update-pin.yml)
+bumps the pin, build-tests the result, and commits to `main`. It runs on:
+
+- a `repository_dispatch` fired by the CLI publish workflow in `fdmtl/machine0`
+  (minutes after each `npm publish`),
+- a daily cron fallback that pins whatever npm's `latest` resolves to,
+- manual `workflow_dispatch` (with an optional `version` input).
+
+**Rollback:** run the workflow manually with the previous good version as the
+`version` input. If npm's `latest` still points at the bad release, deprecate or
+re-tag it on npm first, or the daily cron will bump forward again.
+
+The manual escape hatch still works locally:
 
 ```sh
 ./update.sh            # pin to the latest version on npm

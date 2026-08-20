@@ -1,0 +1,106 @@
+name: Update CLI pin
+
+on:
+  repository_dispatch:
+    types: [cli-published]
+  schedule:
+    - cron: '17 6 * * *'   # daily fallback: pins npm `latest` if a dispatch was missed
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to pin (empty = latest on npm; use for rollback too)'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-pin
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # This workflow's only job is to update the pin on main. Pin the ref
+          # so a workflow_dispatch started from another branch (e.g. the
+          # documented rollback flow) still lands on main.
+          ref: main
+          # Full history so the push step can rebase if main advances mid-run.
+          fetch-depth: 0
+      # cachix/install-nix-action installs upstream Nix. Do NOT use
+      # DeterminateSystems/nix-installer-action: it installs Determinate Nix by
+      # default and dropped upstream-Nix support on 2026-01-01.
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+
+      - name: Run update.sh (retry for npm registry propagation)
+        env:
+          VERSION: ${{ github.event.client_payload.version || inputs.version || '' }}
+        run: |
+          for i in 1 2 3 4 5; do
+            if [ -n "$VERSION" ]; then
+              ./update.sh "$VERSION" && exit 0
+            else
+              ./update.sh && exit 0
+            fi
+            echo "attempt $i failed (tarball may not have propagated yet); retrying in 60s"
+            sleep 60
+          done
+          echo "::error::update.sh failed after 5 attempts"
+          exit 1
+
+      - name: Verify pin matches the dispatched version
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          EXPECTED="${{ github.event.client_payload.version }}"
+          ACTUAL=$(sed -n 's/^ *version = "\(.*\)";/\1/p' flake.nix | head -1)
+          if [ -n "$EXPECTED" ] && [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::pinned ${ACTUAL} but the publish dispatched ${EXPECTED}"
+            exit 1
+          fi
+
+      - name: Exit early if nothing changed
+        id: diff
+        run: |
+          if git diff --quiet flake.nix package-lock.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and smoke-test
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          nix build .#default
+          ./result/bin/machine0 --version
+          ./result/bin/machine0 --help
+
+      - name: Commit and push
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          VERSION=$(sed -n 's/^ *version = "\(.*\)";/\1/p' flake.nix | head -1)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add flake.nix package-lock.json
+          git commit -m "pin @machine0/cli@${VERSION}"
+          # main may have advanced while we were building; rebase and retry.
+          # Our commit only touches flake.nix + package-lock.json, so a rebase
+          # conflict means a competing pin update — fail loudly in that case.
+          # After a rebase the tree is a combination that was never built
+          # (e.g. a concurrent flake.lock change), so revalidate before
+          # pushing it.
+          for i in 1 2 3; do
+            git push origin main && exit 0
+            if [ "$i" -eq 3 ]; then
+              break
+            fi
+            echo "push attempt $i rejected (main advanced); rebasing and revalidating"
+            git pull --rebase origin main
+            nix build .#default
+            ./result/bin/machine0 --version
+            ./result/bin/machine0 --help
+          done
+          echo "::error::failed to push to main after 3 attempts"
+          exit 1
