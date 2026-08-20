@@ -64,7 +64,7 @@ jobs:
       - name: Exit early if nothing changed
         id: diff
         run: |
-          if git diff --quiet flake.nix package-lock.json; then
+          if git diff --quiet flake.nix; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -83,10 +83,10 @@ jobs:
           VERSION=$(sed -n 's/^ *version = "\(.*\)";/\1/p' flake.nix | head -1)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add flake.nix package-lock.json
+          git add flake.nix
           git commit -m "pin @machine0/cli@${VERSION}"
           # main may have advanced while we were building; rebase and retry.
-          # Our commit only touches flake.nix + package-lock.json, so a rebase
+          # Our commit only touches flake.nix, so a rebase
           # conflict means a competing pin update — fail loudly in that case.
           # After a rebase the tree is a combination that was never built
           # (e.g. a concurrent flake.lock change), so revalidate before
