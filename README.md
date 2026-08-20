@@ -4,9 +4,10 @@ A small, standalone [Nix flake](https://nixos.wiki/wiki/Flakes) that packages th
 [machine0 CLI](https://machine0.io) (`@machine0/cli`) — no `npm` required on your
 machine.
 
-The flake fetches the prebuilt bundle straight from the public npm registry and
-wraps it with a pinned Node.js. The published CLI is a single dependency-free
-bundle, so this is a plain fetch-and-wrap — no `node_modules`, no build step.
+The flake fetches the prebuilt bundle straight from the public npm registry,
+installs its two runtime dependencies (`open`, `update-notifier`) from a
+vendored `package-lock.json` via `buildNpmPackage`, and runs it with a pinned
+Node.js. No build step — the tarball ships a prebuilt bundle.
 
 ## Use it
 
