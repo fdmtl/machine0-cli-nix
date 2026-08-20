@@ -88,10 +88,16 @@ jobs:
           # main may have advanced while we were building; rebase and retry.
           # Our commit only touches flake.nix + package-lock.json, so a rebase
           # conflict means a competing pin update — fail loudly in that case.
+          # After a rebase the tree is a combination that was never built
+          # (e.g. a concurrent flake.lock change), so revalidate before
+          # pushing it.
           for i in 1 2 3; do
             git push origin main && exit 0
-            echo "push attempt $i rejected (main advanced); rebasing and retrying"
+            echo "push attempt $i rejected (main advanced); rebasing and revalidating"
             git pull --rebase origin main
+            nix build .#default
+            ./result/bin/machine0 --version
+            ./result/bin/machine0 --help
           done
           echo "::error::failed to push to main after 3 attempts"
           exit 1
