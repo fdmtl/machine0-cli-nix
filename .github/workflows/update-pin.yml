@@ -93,6 +93,9 @@ jobs:
           # pushing it.
           for i in 1 2 3; do
             git push origin main && exit 0
+            if [ "$i" -eq 3 ]; then
+              break
+            fi
             echo "push attempt $i rejected (main advanced); rebasing and revalidating"
             git pull --rebase origin main
             nix build .#default
