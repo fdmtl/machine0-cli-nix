@@ -14,7 +14,7 @@
         # --- pin (updated by ./update.sh) ---
         version = "1.0.148";
         hash = "sha256-nqQEvZjmE7NiyDEIz3DERRgKEfArRqM9rHZTtvNVB6s=";
-        npmDepsHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        npmDepsHash = "sha256-QecaJnJs5vNY47GYG4j/wBblbOTIh1klOeUrqrMS1ds=";
         # -------------------------------------
 
         machine0 = (pkgs.buildNpmPackage.override { nodejs = pkgs.nodejs_22; }) {

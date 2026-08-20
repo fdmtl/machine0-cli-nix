@@ -1,0 +1,4 @@
+{
+  "excludeAuthors": ["dependabot[bot]", "github-actions[bot]"],
+  "ignorePatterns": "*.md\npackage-lock.json"
+}
