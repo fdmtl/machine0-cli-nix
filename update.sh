@@ -64,10 +64,12 @@ echo "  hash: $hash"
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 curl -fsSL "$url" | tar xz -C "$tmpdir"
-ndeps="$(jq '.dependencies | length // 0' "$tmpdir/package/package.json")"
+# Both `dependencies` and `optionalDependencies` are installed by a normal
+# `npm i -g`, so both would be missing from this unpacked tree.
+ndeps="$(jq '((.dependencies // {}) + (.optionalDependencies // {})) | length' "$tmpdir/package/package.json")"
 if [ "$ndeps" != "0" ]; then
   echo "error: @machine0/cli@${version} declares ${ndeps} runtime dependencies:" >&2
-  jq -r '.dependencies | keys[]' "$tmpdir/package/package.json" >&2
+  jq -r '((.dependencies // {}) + (.optionalDependencies // {})) | keys[]' "$tmpdir/package/package.json" >&2
   echo >&2
   echo "This flake unpacks the tarball with no node_modules, so those imports" >&2
   echo "would fail at runtime. Either the release regressed (see" >&2

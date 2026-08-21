@@ -63,14 +63,20 @@
 
           # Catch a reintroduced runtime dependency at BUILD time rather than
           # on a user's first invocation. `npm pack` output is the same tree
-          # this derivation installs, so an empty `.dependencies` here is
+          # this derivation installs, so an empty dependency set here is
           # exactly the property the unpack-and-wrap relies on.
+          #
+          # `optionalDependencies` counts too: npm installs those on a normal
+          # `npm i -g`, so they would be just as absent from this tree as a
+          # hard dependency. `peerDependencies` deliberately does not — it is
+          # the consumer's job to supply those.
           doInstallCheck = true;
           installCheckPhase = ''
             runHook preInstallCheck
-            if ${pkgs.jq}/bin/jq -e '.dependencies | length > 0' package.json >/dev/null 2>&1; then
+            deps='((.dependencies // {}) + (.optionalDependencies // {}))'
+            if ${pkgs.jq}/bin/jq -e "$deps | length > 0" package.json >/dev/null 2>&1; then
               echo "ERROR: @machine0/cli@${version} declares runtime dependencies:" >&2
-              ${pkgs.jq}/bin/jq -r '.dependencies | keys[]' package.json >&2
+              ${pkgs.jq}/bin/jq -r "$deps | keys[]" package.json >&2
               echo "This derivation unpacks the tarball with no node_modules, so those" >&2
               echo "imports would fail at runtime. Restore a dependency-aware builder." >&2
               exit 1
