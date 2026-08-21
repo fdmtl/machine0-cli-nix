@@ -49,45 +49,44 @@ if [ -z "$hash" ]; then
 fi
 echo "  hash: $hash"
 
-# Regenerate the lockfile for the runtime deps. The published package.json
-# carries devDependencies with bun `workspace:*` refs npm cannot parse, so
-# strip them first — mirroring the postPatch in flake.nix.
+# Assert the release is dependency-free.
+#
+# The flake unpacks the tarball and wraps bin/entry.cjs with node — there is
+# no npm install and therefore no node_modules. A release that declares
+# runtime dependencies would build fine here and then die on the user's first
+# invocation with ERR_MODULE_NOT_FOUND. That is not hypothetical: 1.0.147
+# through 1.0.163 externalised `open` and `update-notifier` out of the bundle
+# (fdmtl/machine0#626) and shipped exactly that failure to every consumer
+# packaging the tarball directly. 1.0.164 re-bundled them
+# (fdmtl/machine0#733).
+#
+# Fail loudly rather than pinning a version this flake cannot actually run.
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 curl -fsSL "$url" | tar xz -C "$tmpdir"
-(
-  cd "$tmpdir/package"
-  jq 'del(.devDependencies)' package.json > package.json.tmp
-  mv package.json.tmp package.json
-  npm install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null
-)
-cp "$tmpdir/package/package-lock.json" package-lock.json
-
-# Compute the npm deps hash for the new lockfile.
-if command -v prefetch-npm-deps >/dev/null 2>&1; then
-  deps_hash="$(prefetch-npm-deps package-lock.json 2>/dev/null | tail -1)"
-else
-  deps_hash="$(nix --extra-experimental-features 'nix-command flakes' \
-    run nixpkgs#prefetch-npm-deps -- package-lock.json 2>/dev/null | tail -1)"
-fi
-
-if [ -z "$deps_hash" ]; then
-  echo "error: could not compute npmDepsHash" >&2
+# Both `dependencies` and `optionalDependencies` are installed by a normal
+# `npm i -g`, so both would be missing from this unpacked tree.
+ndeps="$(jq '((.dependencies // {}) + (.optionalDependencies // {})) | length' "$tmpdir/package/package.json")"
+if [ "$ndeps" != "0" ]; then
+  echo "error: @machine0/cli@${version} declares ${ndeps} runtime dependencies:" >&2
+  jq -r '((.dependencies // {}) + (.optionalDependencies // {})) | keys[]' "$tmpdir/package/package.json" >&2
+  echo >&2
+  echo "This flake unpacks the tarball with no node_modules, so those imports" >&2
+  echo "would fail at runtime. Either the release regressed (see" >&2
+  echo "fdmtl/machine0#626 / #733), or the flake needs a dependency-aware" >&2
+  echo "builder again. Refusing to pin." >&2
   exit 1
 fi
-echo "  npmDepsHash: $deps_hash"
+echo "  dependencies: none (bundle is self-contained)"
 
-# Rewrite the three pin lines in flake.nix. The `hash` pattern is anchored so
-# it cannot match the `npmDepsHash` line.
+# Rewrite the two pin lines in flake.nix.
 sed -i.bak -E \
   -e "s|^( *version = )\"[^\"]*\";|\1\"${version}\";|" \
   -e "s|^( *hash = )\"[^\"]*\";|\1\"${hash}\";|" \
-  -e "s|^( *npmDepsHash = )\"[^\"]*\";|\1\"${deps_hash}\";|" \
   flake.nix
 rm -f flake.nix.bak
 
 echo
 git --no-pager diff -- flake.nix || true
-git --no-pager diff --stat -- package-lock.json || true
 echo
-echo "done. review the diff above, then: git add flake.nix package-lock.json && git commit -m \"pin ${PKG}@${version}\" && git push"
+echo "done. review the diff above, then: git add flake.nix && git commit -m \"pin ${PKG}@${version}\" && git push"
