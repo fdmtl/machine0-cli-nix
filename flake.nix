@@ -12,8 +12,8 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         # --- pin (updated by ./update.sh) ---
-        version = "1.0.185";
-        hash = "sha256-5LinLMqXcYlUm4+UUGm6PlGpTfOtngjRh2YQ839Arvc=";
+        version = "1.0.187";
+        hash = "sha256-2VRuxxZ1KZiwA15EarPNStIpo5/zXXYCN1Adr2GJnjs=";
         # -------------------------------------
 
         # The published tarball is a self-contained bundle: no runtime
